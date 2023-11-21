@@ -29,7 +29,7 @@ app.use(bodyParser.json());
 
 // Function to generate a unique rewards number
 function generateRewardsNumber() {
-    return 'R' + Math.floor(Math.random() * 9000000000) + 1000000000;
+    return 'R' + Math.floor(Math.random() * 90000) + 10000;
 }
 
 async function sellSeat(flightId, seatType, quantity) {
