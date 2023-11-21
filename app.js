@@ -142,7 +142,7 @@ app.post('/register', async (req, res) => {
   app.get('/flights', async (req, res) => {
     try {
       // Fetch all flights from Firestore
-      const flightsSnapshot = await admin.firestore().collection('flight').get();
+      const flightsSnapshot = await admin.firestore().collection('Flight').get();
   
       // Extract flight data from the snapshot
       const flights = [];
