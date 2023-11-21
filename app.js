@@ -19,6 +19,62 @@ function generateRewardsNumber() {
     return 'R' + Math.floor(Math.random() * 9000000000) + 1000000000;
 }
 
+async function sellSeat(flightId, seatType, quantity) {
+  try {
+    const flightRef = admin.firestore().collection('Flight').doc(flightId);
+    const flightDoc = await flightRef.get();
+
+    if (!flightDoc.exists) {
+      console.error('Flight not found');
+      return;
+    }
+
+    const currentSeats = flightDoc.data().availableSeats || {};
+
+    if (!currentSeats[seatType] || currentSeats[seatType] < quantity) {
+      console.error('Not enough available seats to sell');
+      return;
+    }
+
+    // Update availableSeats map
+    currentSeats[seatType] -= quantity;
+
+    await flightRef.update({
+      availableSeats: currentSeats,
+    });
+
+    console.log(`Successfully sold ${quantity} seat(s) of type ${seatType} for flight ${flightId}`);
+  } catch (error) {
+    console.error('Error selling seat:', error);
+  }
+}
+
+async function returnSeat(flightId, seatType, quantity) {
+  try {
+    const flightRef = admin.firestore().collection('Flight').doc(flightId);
+    const flightDoc = await flightRef.get();
+
+    if (!flightDoc.exists) {
+      console.error('Flight not found');
+      return;
+    }
+
+    const currentSeats = flightDoc.data().availableSeats || {};
+
+    // Update availableSeats map
+    currentSeats[seatType] = (currentSeats[seatType] || 0) + quantity;
+
+    await flightRef.update({
+      availableSeats: currentSeats,
+    });
+
+    console.log(`Successfully returned ${quantity} seat(s) of type ${seatType} for flight ${flightId}`);
+  } catch (error) {
+    console.error('Error returning seat:', error);
+  }
+}
+
+
 // User Registration
 app.post('/register', async (req, res) => {
     try {
@@ -103,7 +159,7 @@ app.post('/register', async (req, res) => {
 
   // Make a Booking
 
-  app.post('/create-booking', async (req, res) => {
+  app.post('/booking', async (req, res) => {
     try {
       const {
         flightClass,
@@ -114,6 +170,8 @@ app.post('/register', async (req, res) => {
         seatNumber,
       } = req.body;
   
+      const flightRef = admin.firestore().collection('Flight').doc(flightNumber);
+
       // Ensure passenger with the given rewardsNumber exists or create a new one
       let passengerID;
       if (passenger.rewardsNumber) {
@@ -125,7 +183,7 @@ app.post('/register', async (req, res) => {
           .get();
   
         if (!existingPassengerQuery.empty) {
-          passengerID = existingPassengerQuery.docs[0].id;
+          passengerID = existingPassengerQuery.docs[0];
         } else {
           // Create a new passenger
           const newPassengerRef = await admin.firestore().collection('Passenger').add({
@@ -138,7 +196,7 @@ app.post('/register', async (req, res) => {
             rewardsNumber: passenger.rewardsNumber
           });
   
-          passengerID = newPassengerRef.id;
+          passengerID = newPassengerRef;
         }
       }
   
@@ -146,12 +204,13 @@ app.post('/register', async (req, res) => {
       const bookingRef = await admin.firestore().collection('Booking').add({
         bookingDateTime: new Date(),
         flightClass,
-        flightNumber,
+        flightNumber: flightRef,
         passengerID,
         paymentID,
         price,
-        seatNumber,
+        seatNumber
       });
+      sellSeat(flightNumber, flightClass, 1);
   
       res.status(200).json({ message: 'Booking created successfully', bookingID: bookingRef.id });
     } catch (error) {
